@@ -1,3 +1,4 @@
+from django.db.models import Q, Count
 from rest_framework.generics import ListAPIView
 from .models import FoodCategory
 from .serializers import FoodListSerializer
@@ -6,20 +7,15 @@ from .serializers import FoodListSerializer
 class FoodCategoryListAPIView(ListAPIView):
     """Вывод списка категорий"""
 
-    # В Queryset попадут только те категории, у которых есть опубликованные блюда, но с дубликатами.
-    queryset = FoodCategory.objects.filter(food__is_publish=True)
     serializer_class = FoodListSerializer
 
     def get_queryset(self):
-        """Форматируем Queryset"""
+        """Получение Queryset"""
+        # Возвращает множества объектов с is_publish = True
+        food_count = Count('food', filter=Q(food__is_publish=True))
+        # Использование аннотации для получения категорий в которых есть хотя бы одно опубликованное блюдо
+        queryset = FoodCategory.objects.annotate(food_count=food_count).filter(food_count__gt=0)
 
-        queryset = super().get_queryset()
+        return queryset
 
-        # Уберем дубли из набора данных:
-        new_query = []
-        for category in queryset:
-            if category not in new_query:
-                new_query.append(category)
-
-        return new_query
 
